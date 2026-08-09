@@ -26,8 +26,6 @@ public final class CloudBootstrap {
         }
         printBanner();
 
-
-
         var nodeServer = new NodeServer(new ServiceConfigHandler(new TaskManager()));
         nodeServer.start(NodeServer.DEFAULT_PORT);
 

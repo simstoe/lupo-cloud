@@ -11,6 +11,7 @@
             <option value="$PROJECT_DIR$/lupo-api" />
             <option value="$PROJECT_DIR$/lupo-bootstrap" />
             <option value="$PROJECT_DIR$/lupo-node" />
+            <option value="$PROJECT_DIR$/lupo-web-api" />
           </set>
         </option>
       </GradleProjectSettings>

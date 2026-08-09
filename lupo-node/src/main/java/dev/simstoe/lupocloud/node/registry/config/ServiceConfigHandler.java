@@ -172,12 +172,6 @@ public class ServiceConfigHandler {
         return 25577;
     }
 
-    /**
-     * @param allowedGroups empty set means "no restriction" - every server is included, same as before groups existed.
-     * Also emits an explicit {@code try} fallback list matching the registered server names - without it Velocity
-     * falls back to its own hardcoded default of a server literally named "lobby", which fails validation whenever
-     * the actual server is named anything else (e.g. task-generated names like "lobby-1").
-     */
     public String buildServersBlock(Set<String> allowedGroups) {
         StringBuilder entries = new StringBuilder();
         List<String> names = new ArrayList<>();

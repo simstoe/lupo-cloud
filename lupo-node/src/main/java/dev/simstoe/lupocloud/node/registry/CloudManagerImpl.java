@@ -308,8 +308,6 @@ public class CloudManagerImpl implements ICloudManager {
         int port;
         try {
             port = portAllocator.allocate(task.startPort(), activeServices());
-
-            CloudLogger.error("DER PORT: " + port);
         } catch (IllegalStateException e) {
             CloudLogger.error("Could not allocate a port for task '" + taskName + "': " + e.getMessage());
             return;
