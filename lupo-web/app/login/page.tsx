@@ -3,97 +3,82 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import {Button} from "@/components/ui/button";
+import { IconBolt } from "@/components/icons";
+import { LiveDot } from "@/components/ui";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setSubmitting(true);
     setError(null);
+    setLoading(true);
     try {
       await login(password);
       router.replace("/");
     } catch {
-      setError("Invalid password.");
+      setError("Ungültiges Passwort.");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   }
 
   return (
-      <div className="flex min-h-[80vh] flex-1 items-center justify-center px-4">
-        <form
-            onSubmit={handleSubmit}
-            className="w-full max-w-sm rounded-2xl border border-neutral-800 bg-neutral-900/80 p-8 shadow-2xl backdrop-blur-xl transition-all"
-        >
-          <div className="mb-6 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-neutral-700/50 bg-neutral-800/50 text-neutral-200 shadow-inner">
-              <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="h-5 w-5"
-              >
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
-                />
-              </svg>
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-white">LUPO Dashboard</h1>
-            <p className="mt-1 text-xs text-neutral-400">Bitte gib dein Admin-Passwort ein</p>
+    <div className="bg-grid flex h-full items-center justify-center p-6">
+      <div className="w-full max-w-sm animate-[fadeInUp_0.5s_ease-out_both] border border-white/15 bg-[#0a0a0a] p-8">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center border border-white/20 transition-transform duration-300 hover:rotate-12 hover:scale-110">
+            <IconBolt className="h-4 w-4 text-white" />
           </div>
+          <span className="font-minecraft text-4xl uppercase tracking-wide text-white">LUPO CLOUD</span>
+        </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-neutral-400">
-                Admin-Passwort
-              </label>
-              <input
-                  type="password"
-                  autoFocus
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950/60 px-3.5 py-2.5 text-sm text-white placeholder-neutral-600 outline-none transition-all focus:border-neutral-600 focus:ring-2 focus:ring-neutral-700/50"
-              />
-            </div>
-
-            {error && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400">
-                  {error}
-                </div>
-            )}
-
-            <Button
-                type="submit"
-                disabled={submitting}
-                variant="outline"
-                className="w-full rounded-lg border-neutral-700 bg-neutral-800 py-2.5 font-medium text-white transition-all hover:bg-neutral-700 hover:border-neutral-600 active:scale-[0.98] disabled:opacity-50"
-            >
-              {submitting ? (
-                  <span className="flex items-center justify-center gap-2">
-            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Wird angemeldet...
+        <div className="mt-6 flex items-center justify-between border border-white/10 bg-white/[0.02] px-3 py-2">
+          <span className="font-mono text-[11px] text-white/40">
+            {process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080"}
           </span>
-              ) : (
-                  "Sign in"
-              )}
-            </Button>
+          <div className="flex items-center gap-1.5">
+            <LiveDot color="bg-white" />
+            <span className="font-mono text-[10px] uppercase tracking-wider text-white/40">Erreichbar</span>
           </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[11px] uppercase tracking-wider text-white/40">Passwort</span>
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              autoFocus
+              disabled={loading}
+              placeholder="••••••••"
+              className="border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40 disabled:opacity-50"
+            />
+          </label>
+
+          {error && (
+            <div className="animate-[fadeInUp_0.25s_ease-out_both] font-mono text-[11px] text-red-400">{error}</div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-2 flex items-center justify-center gap-2 border border-white bg-white py-2.5 font-mono text-xs font-semibold uppercase tracking-wider text-black transition-all duration-150 hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
+          >
+            {loading && <span className="h-3 w-3 animate-spin border-2 border-black/30 border-t-black" />}
+            {loading ? "Verbinde…" : "Anmelden"}
+          </button>
         </form>
+
+        <div className="mt-5 border-t border-white/10 pt-4 text-center font-mono text-[10px] uppercase tracking-wider text-white/25">
+          lupo.cloud
+        </div>
       </div>
+    </div>
   );
 }

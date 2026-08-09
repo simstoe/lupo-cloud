@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class ServiceConfigHandler {
@@ -17,9 +19,11 @@ public class ServiceConfigHandler {
     private static final String TASK_MARKER_FILE = ".cloud-task";
 
     private final TaskManager taskManager;
+    private final SettingsManager settingsManager;
 
-    public ServiceConfigHandler(TaskManager taskManager) {
+    public ServiceConfigHandler(TaskManager taskManager, SettingsManager settingsManager) {
         this.taskManager = taskManager;
+        this.settingsManager = settingsManager;
     }
 
     public void writeTaskMarker(File serviceDir, String taskName) {
@@ -73,6 +77,28 @@ public class ServiceConfigHandler {
                 }
             }
             if (!updated) lines.add("server-port=" + port);
+            Files.write(propsFile.toPath(), lines);
+        } catch (IOException ignored) {}
+    }
+
+    public void enableQuery(File serverDir, int port) {
+        var propsFile = new File(serverDir, "server.properties");
+
+        try {
+            List<String> lines = propsFile.exists() ? Files.readAllLines(propsFile.toPath()) : new ArrayList<>();
+            boolean queryUpdated = false;
+            boolean portUpdated = false;
+            for (int i = 0; i < lines.size(); i++) {
+                if (lines.get(i).startsWith("enable-query=")) {
+                    lines.set(i, "enable-query=true");
+                    queryUpdated = true;
+                } else if (lines.get(i).startsWith("query.port=")) {
+                    lines.set(i, "query.port=" + port);
+                    portUpdated = true;
+                }
+            }
+            if (!queryUpdated) lines.add("enable-query=true");
+            if (!portUpdated) lines.add("query.port=" + port);
             Files.write(propsFile.toPath(), lines);
         } catch (IOException ignored) {}
     }
@@ -201,6 +227,11 @@ public class ServiceConfigHandler {
         return entries.toString();
     }
 
+    private String motdLine() {
+        var settings = settingsManager.get();
+        return "motd = \"<#00ff00>" + settings.networkName() + " - " + settings.motd() + "\"";
+    }
+
     public void generateVelocityConfig(File proxyDir, int port, String secret) {
         File configFile = new File(proxyDir, "velocity.toml");
         if (configFile.exists()) return;
@@ -208,7 +239,7 @@ public class ServiceConfigHandler {
         String configContent = """
                 config-version = "3.3"
                 bind = "0.0.0.0:%d"
-                motd = "<#00ff00>A Minecraft Cloud Network"
+                %s
                 show-max-players = 50
                 online-mode = true
                 player-info-forwarding-mode = "modern"
@@ -217,12 +248,14 @@ public class ServiceConfigHandler {
                 [servers]
                 %s
                 [forced-hosts]
-                """.formatted(port, buildServersBlock(resolveProxyGroups(proxyDir)).stripTrailing());
+                """.formatted(port, motdLine(), buildServersBlock(resolveProxyGroups(proxyDir)).stripTrailing());
 
         try {
             Files.writeString(configFile.toPath(), configContent);
         } catch (IOException ignored) {}
     }
+
+    private static final Pattern MOTD_PATTERN = Pattern.compile("^motd = \".*\"$", Pattern.MULTILINE);
 
     public void updateAllProxyConfigs() {
         File proxiesDir = new File("proxies");
@@ -235,6 +268,8 @@ public class ServiceConfigHandler {
             if (!configFile.exists()) continue;
             try {
                 String content = Files.readString(configFile.toPath());
+                content = MOTD_PATTERN.matcher(content).replaceFirst(Matcher.quoteReplacement(motdLine()));
+
                 int serversIdx = content.indexOf("[servers]");
                 int forcedHostsIdx = content.indexOf("[forced-hosts]");
 
@@ -243,9 +278,10 @@ public class ServiceConfigHandler {
                     String beforeServers = content.substring(0, serversIdx);
                     String afterServers = (forcedHostsIdx != -1) ? content.substring(forcedHostsIdx) : "";
 
-                    String newContent = beforeServers + "[servers]\n" + serversBlock + "\n" + afterServers;
-                    Files.writeString(configFile.toPath(), newContent);
+                    content = beforeServers + "[servers]\n" + serversBlock + "\n" + afterServers;
                 }
+
+                Files.writeString(configFile.toPath(), content);
             } catch (IOException ignored) {}
         }
     }

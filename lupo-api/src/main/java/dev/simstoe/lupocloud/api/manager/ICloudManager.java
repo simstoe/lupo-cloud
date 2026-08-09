@@ -1,6 +1,9 @@
 package dev.simstoe.lupocloud.api.manager;
 
 import dev.simstoe.lupocloud.api.models.CloudService;
+import dev.simstoe.lupocloud.api.models.MonitoringSnapshot;
+import dev.simstoe.lupocloud.api.models.NetworkSettings;
+import dev.simstoe.lupocloud.api.models.PlayerInfo;
 import dev.simstoe.lupocloud.api.models.ServiceTask;
 import dev.simstoe.lupocloud.api.models.ServiceType;
 
@@ -45,4 +48,12 @@ public interface ICloudManager {
     void createBackup(String serviceName);
     void restoreBackup(String serviceName, String backupFileName);
     void deleteBackup(String serviceName, String backupFileName);
+
+    NetworkSettings settings();
+    void updateSettings(NetworkSettings settings);
+    void deleteAllTemplates();
+    void resetCloud();
+
+    List<PlayerInfo> onlinePlayers();
+    MonitoringSnapshot monitoring();
 }

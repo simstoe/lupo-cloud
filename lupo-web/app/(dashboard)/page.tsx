@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import * as api from "@/lib/api";
 import type { CloudService, ServiceTask } from "@/lib/types";
+import { GlassCard, Badge, LiveDot, CountUp, fadeStyle } from "@/components/ui";
+import SpotlightCard from "@/components/SpotlightCard";
+import SpecularButton from "@/components/SpecularButton";
 
 export default function DashboardPage() {
   const { token } = useAuth();
@@ -58,83 +61,109 @@ export default function DashboardPage() {
     }
   }
 
+  const running = services?.filter((s) => s.running).length ?? 0;
+
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Services</h1>
-        <button
-          onClick={handleStopAll}
-          disabled={busy === "__all__"}
-          className="rounded border border-red-800 px-3 py-1.5 text-sm text-red-400 hover:bg-red-950 disabled:opacity-50 cursor-pointer"
-        >
-          Stop all
-        </button>
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <SpotlightCard className="stagger-in p-4 custom-spotlight-card">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-white/35">Online</span>
+          <div className="-mt-2 flex items-center gap-2">
+            <CountUp value={running} className="font-minecraft text-6xl text-white" />
+          </div>
+        </SpotlightCard>
+        <SpotlightCard className="stagger-in p-4 custom-spotlight-card">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-white/35">Services</span>
+          <CountUp value={services?.length ?? 0} className="-mt-2 font-minecraft block text-6xl text-white" />
+        </SpotlightCard>
+        <SpotlightCard className="stagger-in p-4 custom-spotlight-card">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-white/35">Aufgaben</span>
+          <CountUp value={tasks.length} className="-mt-2 block font-minecraft text-6xl text-white" />
+        </SpotlightCard>
       </div>
 
-      <table className="w-full border-collapse overflow-hidden rounded-lg border border-neutral-800 text-sm">
-        <thead className="bg-neutral-900 text-left text-neutral-400">
-          <tr>
-            <th className="px-4 py-2 font-medium">Name</th>
-            <th className="px-4 py-2 font-medium">Type</th>
-            <th className="px-4 py-2 font-medium">Port</th>
-            <th className="px-4 py-2 font-medium">Status</th>
-            <th className="px-4 py-2 font-medium"></th>
-          </tr>
-        </thead>
-        <tbody>
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h1 className="font-mono text-xs uppercase tracking-wider text-white/40">Running services</h1>
+          <button
+            onClick={handleStopAll}
+            disabled={busy === "__all__"}
+            className="border border-red-900/60 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-red-400 transition-all duration-150 hover:bg-red-950/40 active:scale-95 disabled:opacity-50"
+          >
+            Alle stoppen
+          </button>
+        </div>
+
+        <GlassCard>
           {services?.length === 0 && (
-            <tr>
-              <td colSpan={5} className="px-4 py-6 text-center text-neutral-500">
-                No services running.
-              </td>
-            </tr>
+            <div className="px-4 py-8 text-center font-mono text-xs text-white/35">No service active.</div>
           )}
-          {services?.map((s) => (
-            <tr key={s.uuid} className="border-t border-neutral-800">
-              <td className="px-4 py-2">
-                <Link href={`/services/${encodeURIComponent(s.name)}`} className="text-blue-400 hover:underline">
-                  {s.name}
-                </Link>
-              </td>
-              <td className="px-4 py-2 text-neutral-400">{s.type}</td>
-              <td className="px-4 py-2 text-neutral-400">{s.port}</td>
-              <td className="px-4 py-2">
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ${
-                    s.running ? "bg-green-950 text-green-400" : "bg-neutral-800 text-neutral-400"
-                  }`}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${s.running ? "bg-green-400" : "bg-neutral-500"}`} />
-                  {s.running ? "running" : "stopped"}
-                </span>
-              </td>
-              <td className="px-4 py-2 text-right">
+          {services?.map((s, i) => (
+            <div
+              key={s.uuid}
+              style={fadeStyle(i)}
+              className={`stagger-in flex items-center justify-between gap-4 px-4 py-3 transition-colors duration-150 hover:bg-white/[0.03] ${i > 0 ? "border-t border-white/10" : ""}`}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <LiveDot color={s.running ? "bg-emerald-400" : "bg-white/25"} />
+                <div className="min-w-0">
+                  <Link
+                    href={`/services/${encodeURIComponent(s.name)}`}
+                    className="truncate text-sm font-medium text-white transition-colors hover:text-white/80 hover:underline"
+                  >
+                    {s.name}
+                  </Link>
+                  <div className="font-mono text-[11px] text-white/35">Port {s.port}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Badge>{s.type}</Badge>
                 <button
                   onClick={() => handleStop(s.name)}
                   disabled={busy === s.name}
-                  className="rounded border border-neutral-700 px-2 py-1 text-xs hover:bg-neutral-800 disabled:opacity-50 cursor-pointer"
+                  className="border border-white/15 px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider text-white/70 transition-all duration-150 hover:bg-white/10 hover:text-white active:scale-95 disabled:opacity-50"
                 >
                   Stop
                 </button>
-              </td>
-            </tr>
+              </div>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </GlassCard>
+      </div>
 
-      <h2 className="mt-8 mb-3 text-sm font-medium text-neutral-400">Start from task</h2>
-      <div className="flex flex-wrap gap-2">
-        {tasks.length === 0 && <p className="text-sm text-neutral-500">No tasks configured yet.</p>}
-        {tasks.map((t) => (
-          <button
-            key={t.name}
-            onClick={() => handleStartTask(t.name)}
-            disabled={busy === t.name}
-            className="rounded border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50 cursor-pointer"
-          >
-            Start {t.name}
-          </button>
-        ))}
+      <div>
+        <h2 className="mb-3 font-mono text-xs uppercase tracking-wider text-white/40">Aus Aufgabe starten</h2>
+        {tasks.length === 0 ? (
+          <p className="font-mono text-xs text-white/35">Noch keine Aufgaben konfiguriert.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {tasks.map((t, i) => (
+                <SpecularButton
+                    size="sm"
+                    radius={0}
+                    tint="#ffffff"
+                    tintOpacity={0}
+                    blur={0}
+                    textColor="#f5f5f5"
+                    lineColor="#ffffff"
+                    baseColor="#525252"
+                    intensity={1}
+                    shineSize={10}
+                    shineFade={40}
+                    thickness={1}
+                    speed={0.35}
+                    followMouse
+                    proximity={250}
+                    autoAnimate={false}
+                    key={t.name}
+                    disabled={busy === t.name}
+                    onClick={() => handleStartTask(t.name)}
+                >
+                  Start a {t.name} service
+                </SpecularButton>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

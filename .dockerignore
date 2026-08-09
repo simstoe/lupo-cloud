@@ -1,0 +1,15 @@
+.git
+.gradle
+.idea
+.cache
+build
+*/build
+lupo-web/node_modules
+lupo-web/.next
+local
+servers
+proxies
+templates
+tasks
+temp
+backups

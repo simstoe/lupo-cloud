@@ -3,18 +3,26 @@ package dev.simstoe.lupocloud.node.registry;
 import dev.simstoe.lupocloud.api.logging.CloudLogger;
 import dev.simstoe.lupocloud.api.manager.ICloudManager;
 import dev.simstoe.lupocloud.api.models.CloudService;
+import dev.simstoe.lupocloud.api.models.MonitoringSnapshot;
+import dev.simstoe.lupocloud.api.models.NetworkSettings;
+import dev.simstoe.lupocloud.api.models.PlayerInfo;
 import dev.simstoe.lupocloud.api.models.ServiceTask;
 import dev.simstoe.lupocloud.api.models.ServiceType;
 import dev.simstoe.lupocloud.node.registry.backup.BackupManager;
 import dev.simstoe.lupocloud.node.registry.config.ServiceConfigHandler;
 import dev.simstoe.lupocloud.node.registry.config.ServiceDownloader;
+import dev.simstoe.lupocloud.node.registry.config.SettingsManager;
+import dev.simstoe.lupocloud.node.registry.monitor.MetricsCollector;
+import dev.simstoe.lupocloud.node.registry.monitor.PlayerMonitor;
 import dev.simstoe.lupocloud.node.registry.task.TaskManager;
 import dev.simstoe.lupocloud.node.registry.template.TemplateManager;
 import dev.simstoe.lupocloud.node.registry.util.DirectoryUtil;
 
 import java.io.*;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 public class CloudManagerImpl implements ICloudManager {
     private static final int MAX_LOG_HISTORY = 100;
@@ -36,11 +44,14 @@ public class CloudManagerImpl implements ICloudManager {
     private final ExecutorService executor = Executors.newCachedThreadPool(CloudManagerImpl::newDaemonThread);
 
     private final TaskManager taskManager = new TaskManager();
-    private final ServiceConfigHandler configHandler = new ServiceConfigHandler(taskManager);
+    private final SettingsManager settingsManager = new SettingsManager();
+    private final ServiceConfigHandler configHandler = new ServiceConfigHandler(taskManager, settingsManager);
     private final ServiceDownloader downloader = new ServiceDownloader();
     private final TemplateManager templateManager = new TemplateManager();
     private final PortAllocator portAllocator = new PortAllocator();
     private final BackupManager backupManager = new BackupManager();
+    private final PlayerMonitor playerMonitor = new PlayerMonitor(this::runningPaperServicePorts, executor);
+    private final MetricsCollector metricsCollector = new MetricsCollector(this::trackedProcesses, executor);
 
     private final boolean tasksetAvailable = isTasksetAvailable();
 
@@ -54,6 +65,7 @@ public class CloudManagerImpl implements ICloudManager {
         final Runnable restartAction;
         final File serviceDir;
         final boolean ephemeral;
+        final Instant startedAt = Instant.now();
         volatile boolean intentionalStop = false;
 
         ManagedInstance(CloudService info, Process process, Runnable restartAction, File serviceDir, boolean ephemeral) {
@@ -168,6 +180,7 @@ public class CloudManagerImpl implements ICloudManager {
         CompletableFuture.allOf(bootTasks.toArray(new CompletableFuture[0])).join();
 
         configHandler.updateAllProxyConfigs();
+        reloadRunningProxies();
 
         if (bootTasks.isEmpty()) {
             CloudLogger.info("No existing services found.");
@@ -220,7 +233,11 @@ public class CloudManagerImpl implements ICloudManager {
         configHandler.acceptEula(serviceDir);
         configHandler.configurePaperForVelocity(serviceDir);
         configHandler.updateServerPort(serviceDir, spec.port());
-        if (!duringBoot) configHandler.updateAllProxyConfigs();
+        configHandler.enableQuery(serviceDir, spec.port());
+        if (!duringBoot) {
+            configHandler.updateAllProxyConfigs();
+            reloadRunningProxies();
+        }
 
         try {
             CloudLogger.info("Starting paper server '" + spec.name() + "' on port " + spec.port() + "...");
@@ -428,6 +445,15 @@ public class CloudManagerImpl implements ICloudManager {
 
         if (instance.info.type() == ServiceType.PAPER) {
             configHandler.updateAllProxyConfigs();
+            reloadRunningProxies();
+        }
+    }
+
+    private void reloadRunningProxies() {
+        for (ManagedInstance instance : instances.values()) {
+            if (instance.info.type() == ServiceType.VELOCITY) {
+                sendCommand(instance.info.name(), "velocity reload");
+            }
         }
     }
 
@@ -617,6 +643,65 @@ public class CloudManagerImpl implements ICloudManager {
         } catch (IOException e) {
             CloudLogger.error("Could not delete backup '" + backupFileName + "' for '" + serviceName + "': " + e.getMessage());
         }
+    }
+
+    @Override
+    public NetworkSettings settings() {
+        return settingsManager.get();
+    }
+
+    @Override
+    public void updateSettings(NetworkSettings settings) {
+        try {
+            settingsManager.update(settings);
+            configHandler.updateAllProxyConfigs();
+            reloadRunningProxies();
+            CloudLogger.success("Network settings updated.");
+        } catch (IOException e) {
+            CloudLogger.error("Could not save network settings: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void deleteAllTemplates() {
+        for (String templateName : templates()) {
+            deleteTemplate(templateName);
+        }
+    }
+
+    @Override
+    public void resetCloud() {
+        CloudLogger.info("Resetting cloud - stopping all instances and wiping server/proxy data...");
+        stopAll();
+        try {
+            DirectoryUtil.deleteRecursively(new File("servers").toPath());
+            DirectoryUtil.deleteRecursively(new File("proxies").toPath());
+            CloudLogger.success("Cloud reset complete.");
+        } catch (IOException e) {
+            CloudLogger.error("Could not fully reset the cloud: " + e.getMessage());
+        }
+    }
+
+    private Map<String, Integer> runningPaperServicePorts() {
+        return instances.values().stream()
+                .filter(instance -> instance.info.type() == ServiceType.PAPER)
+                .collect(Collectors.toMap(instance -> instance.info.name(), instance -> instance.info.port(), (a, b) -> a));
+    }
+
+    @Override
+    public List<PlayerInfo> onlinePlayers() {
+        return playerMonitor.onlinePlayers();
+    }
+
+    private List<MetricsCollector.TrackedProcess> trackedProcesses() {
+        return instances.values().stream()
+                .map(instance -> new MetricsCollector.TrackedProcess(instance.info.name(), instance.process.pid(), instance.startedAt))
+                .toList();
+    }
+
+    @Override
+    public MonitoringSnapshot monitoring() {
+        return metricsCollector.snapshot();
     }
 
     private File resolveServiceDirectory(String name) {

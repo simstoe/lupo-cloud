@@ -28,3 +28,34 @@ export type TemplateDto = {
   name: string;
   type: ServiceType;
 };
+
+export type NetworkSettings = {
+  networkName: string;
+  motd: string;
+};
+
+export type PlayerInfo = {
+  playerName: string;
+  serviceName: string;
+};
+
+export type ServiceMetrics = {
+  name: string;
+  running: boolean;
+  cpuPercent: number;
+  memoryMB: number;
+  uptimeSeconds: number;
+};
+
+export type HostMetrics = {
+  cpuPercent: number;
+  usedMemoryMB: number;
+  totalMemoryMB: number;
+  usedDiskMB: number;
+  totalDiskMB: number;
+};
+
+export type MonitoringSnapshot = {
+  host: HostMetrics;
+  services: ServiceMetrics[];
+};

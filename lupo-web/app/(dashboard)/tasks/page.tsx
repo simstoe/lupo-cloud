@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import * as api from "@/lib/api";
 import type { ServiceTask, ServiceType } from "@/lib/types";
+import { GlassCard, Badge, fadeStyle } from "@/components/ui";
 
 const emptyForm = (): ServiceTask => ({
   name: "",
@@ -67,54 +68,63 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Tasks</h1>
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <h1 className="font-mono text-xs uppercase tracking-wider text-white/40">Aufgaben</h1>
         <button
           onClick={() => setEditing(emptyForm())}
-          className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium hover:bg-blue-500 cursor-pointer"
+          className="border border-white bg-white px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-black transition-all duration-150 hover:opacity-90 active:scale-95"
         >
-          New task
+          Neue Aufgabe
         </button>
       </div>
 
-      <ul className="mb-6 divide-y divide-neutral-800 rounded-lg border border-neutral-800">
-        {tasks.length === 0 && <li className="px-4 py-6 text-center text-sm text-neutral-500">No tasks yet.</li>}
-        {tasks.map((t) => (
-          <li key={t.name} className="flex items-center justify-between px-4 py-2 text-sm">
-            <div>
-              <span className="font-medium">{t.name}</span>{" "}
-              <span className="text-neutral-500">
-                {t.type} &middot; port {t.startPort} &middot; {t.minMemoryMB}-{t.maxMemoryMB}MB
-                {t.staticService ? " · static" : ""}
+      <GlassCard>
+        {tasks.length === 0 && (
+          <div className="px-4 py-8 text-center font-mono text-xs text-white/35">Noch keine Aufgaben.</div>
+        )}
+        {tasks.map((t, i) => (
+          <div
+            key={t.name}
+            style={fadeStyle(i)}
+            className={`stagger-in flex items-center justify-between gap-4 px-4 py-3 transition-colors duration-150 hover:bg-white/[0.03] ${i > 0 ? "border-t border-white/10" : ""}`}
+          >
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="truncate text-sm font-medium text-white">{t.name}</span>
+                <Badge>{t.type}</Badge>
+              </div>
+              <div className="mt-0.5 font-mono text-[11px] text-white/35">
+                Port {t.startPort} · {t.minMemoryMB}–{t.maxMemoryMB}MB
+                {t.staticService ? " · statisch" : ""}
                 {t.autostart ? " · autostart" : ""}
-              </span>
+              </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex shrink-0 gap-2">
               <button
                 onClick={() => handleStart(t.name)}
                 disabled={busy === t.name}
-                className="rounded border border-neutral-700 px-2 py-1 text-xs hover:bg-neutral-800 disabled:opacity-50 cursor-pointer"
+                className="border border-white/15 px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider text-white/70 transition-all duration-150 hover:bg-white/10 hover:text-white active:scale-95 disabled:opacity-50"
               >
-                Start now
+                Starten
               </button>
               <button
                 onClick={() => setEditing(t)}
-                className="rounded border border-neutral-700 px-2 py-1 text-xs hover:bg-neutral-800 cursor-pointer"
+                className="border border-white/15 px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider text-white/70 transition-all duration-150 hover:bg-white/10 hover:text-white active:scale-95"
               >
-                Edit
+                Bearbeiten
               </button>
               <button
                 onClick={() => handleDelete(t.name)}
                 disabled={busy === t.name}
-                className="rounded border border-red-800 px-2 py-1 text-xs text-red-400 hover:bg-red-950 disabled:opacity-50 cursor-pointer"
+                className="border border-red-900/60 px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider text-red-400 transition-all duration-150 hover:bg-red-950/40 active:scale-95 disabled:opacity-50"
               >
-                Delete
+                Löschen
               </button>
             </div>
-          </li>
+          </div>
         ))}
-      </ul>
+      </GlassCard>
 
       {editing && (
         <TaskForm
@@ -146,139 +156,149 @@ function TaskForm({
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSave(task, isNew);
-      }}
-      className="rounded-lg border border-neutral-800 bg-neutral-900 p-4"
-    >
-      <h2 className="mb-3 font-medium">{isNew ? "New task" : `Edit ${initial.name}`}</h2>
+    <GlassCard className="animate-[scaleIn_0.2s_ease-out_both] p-5">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave(task, isNew);
+        }}
+      >
+        <h2 className="mb-4 font-mono text-xs uppercase tracking-wider text-white/40">
+          {isNew ? "Neue Aufgabe" : `Bearbeite ${initial.name}`}
+        </h2>
 
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <Field label="Name">
-          <input
-            required
-            disabled={!isNew}
-            value={task.name}
-            onChange={(e) => set("name", e.target.value)}
-            className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 outline-none focus:border-neutral-500 disabled:opacity-50"
-          />
-        </Field>
-        <Field label="Type">
-          <select
-            value={task.type}
-            onChange={(e) => set("type", e.target.value as ServiceType)}
-            className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 outline-none focus:border-neutral-500 disabled:opacity-50"
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Name">
+            <input
+              required
+              disabled={!isNew}
+              value={task.name}
+              onChange={(e) => set("name", e.target.value)}
+              className="w-full border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40 disabled:opacity-50"
+            />
+          </Field>
+          <Field label="Typ">
+            <select
+              value={task.type}
+              onChange={(e) => set("type", e.target.value as ServiceType)}
+              className="w-full border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40"
+            >
+              <option value="PAPER">PAPER</option>
+              <option value="VELOCITY">VELOCITY</option>
+            </select>
+          </Field>
+          <Field label="Vorlagenname">
+            <input
+              value={task.templateName ?? ""}
+              onChange={(e) => set("templateName", e.target.value || null)}
+              className="w-full border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40"
+            />
+          </Field>
+          <Field label="Gruppe">
+            <input
+              value={task.group ?? ""}
+              onChange={(e) => set("group", e.target.value || null)}
+              className="w-full border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40"
+            />
+          </Field>
+          <Field label="Startport">
+            <input
+              type="number"
+              value={task.startPort}
+              onChange={(e) => set("startPort", Number(e.target.value))}
+              className="w-full border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40"
+            />
+          </Field>
+          <Field label="CPU-Kernlimit">
+            <input
+              type="number"
+              value={task.cpuCoreLimit ?? ""}
+              onChange={(e) => set("cpuCoreLimit", e.target.value ? Number(e.target.value) : null)}
+              className="w-full border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40"
+            />
+          </Field>
+          <Field label="Min. Speicher (MB)">
+            <input
+              type="number"
+              value={task.minMemoryMB}
+              onChange={(e) => set("minMemoryMB", Number(e.target.value))}
+              className="w-full border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40"
+            />
+          </Field>
+          <Field label="Max. Speicher (MB)">
+            <input
+              type="number"
+              value={task.maxMemoryMB}
+              onChange={(e) => set("maxMemoryMB", Number(e.target.value))}
+              className="w-full border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40"
+            />
+          </Field>
+          <Field label="Min. Online">
+            <input
+              type="number"
+              value={task.minOnlineCount}
+              onChange={(e) => set("minOnlineCount", Number(e.target.value))}
+              className="w-full border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40"
+            />
+          </Field>
+          <Field label="Max. Online">
+            <input
+              type="number"
+              value={task.maxOnlineCount}
+              onChange={(e) => set("maxOnlineCount", Number(e.target.value))}
+              className="w-full border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40"
+            />
+          </Field>
+          <Field label="Proxy-Gruppen (kommagetrennt)">
+            <input
+              value={task.proxyGroups?.join(",") ?? ""}
+              onChange={(e) =>
+                set("proxyGroups", e.target.value ? e.target.value.split(",").map((s) => s.trim()) : null)
+              }
+              className="w-full border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40"
+            />
+          </Field>
+        </div>
+
+        <div className="mt-4 flex gap-6">
+          <label className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-white/50">
+            <input
+              type="checkbox"
+              checked={task.staticService}
+              onChange={(e) => set("staticService", e.target.checked)}
+            />
+            Statisch
+          </label>
+          <label className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-white/50">
+            <input type="checkbox" checked={task.autostart} onChange={(e) => set("autostart", e.target.checked)} />
+            Autostart
+          </label>
+        </div>
+
+        <div className="mt-6 flex gap-2">
+          <button
+            type="submit"
+            className="border border-white bg-white px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-black transition-all duration-150 hover:opacity-90 active:scale-95"
           >
-            <option value="PAPER">PAPER</option>
-            <option value="VELOCITY">VELOCITY</option>
-          </select>
-        </Field>
-        <Field label="Template name">
-          <input
-            value={task.templateName ?? ""}
-            onChange={(e) => set("templateName", e.target.value || null)}
-            className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 outline-none focus:border-neutral-500 disabled:opacity-50"
-          />
-        </Field>
-        <Field label="Group">
-          <input value={task.group ?? ""} onChange={(e) => set("group", e.target.value || null)} className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 outline-none focus:border-neutral-500 disabled:opacity-50" />
-        </Field>
-        <Field label="Start port">
-          <input
-            type="number"
-            value={task.startPort}
-            onChange={(e) => set("startPort", Number(e.target.value))}
-            className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 outline-none focus:border-neutral-500 disabled:opacity-50"
-          />
-        </Field>
-        <Field label="CPU core limit">
-          <input
-            type="number"
-            value={task.cpuCoreLimit ?? ""}
-            onChange={(e) => set("cpuCoreLimit", e.target.value ? Number(e.target.value) : null)}
-            className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 outline-none focus:border-neutral-500 disabled:opacity-50"
-          />
-        </Field>
-        <Field label="Min memory (MB)">
-          <input
-            type="number"
-            value={task.minMemoryMB}
-            onChange={(e) => set("minMemoryMB", Number(e.target.value))}
-            className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 outline-none focus:border-neutral-500 disabled:opacity-50"
-          />
-        </Field>
-        <Field label="Max memory (MB)">
-          <input
-            type="number"
-            value={task.maxMemoryMB}
-            onChange={(e) => set("maxMemoryMB", Number(e.target.value))}
-            className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 outline-none focus:border-neutral-500 disabled:opacity-50"
-          />
-        </Field>
-        <Field label="Min online">
-          <input
-            type="number"
-            value={task.minOnlineCount}
-            onChange={(e) => set("minOnlineCount", Number(e.target.value))}
-            className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 outline-none focus:border-neutral-500 disabled:opacity-50"
-          />
-        </Field>
-        <Field label="Max online">
-          <input
-            type="number"
-            value={task.maxOnlineCount}
-            onChange={(e) => set("maxOnlineCount", Number(e.target.value))}
-            className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 outline-none focus:border-neutral-500 disabled:opacity-50"
-          />
-        </Field>
-        <Field label="Proxy groups (comma-separated)">
-          <input
-            value={task.proxyGroups?.join(",") ?? ""}
-            onChange={(e) =>
-              set("proxyGroups", e.target.value ? e.target.value.split(",").map((s) => s.trim()) : null)
-            }
-            className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 outline-none focus:border-neutral-500 disabled:opacity-50"
-          />
-        </Field>
-      </div>
-
-      <div className="mt-3 flex gap-4 text-sm">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={task.staticService}
-            onChange={(e) => set("staticService", e.target.checked)}
-          />
-          Static
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={task.autostart} onChange={(e) => set("autostart", e.target.checked)} />
-          Autostart
-        </label>
-      </div>
-
-      <div className="mt-4 flex gap-2">
-        <button type="submit" className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium hover:bg-blue-500 cursor-pointer">
-          Save
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 cursor-pointer"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
+            Speichern
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="border border-white/15 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-white/70 transition-all duration-150 hover:bg-white/10 hover:text-white active:scale-95"
+          >
+            Abbrechen
+          </button>
+        </div>
+      </form>
+    </GlassCard>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-xs text-neutral-400">{label}</span>
+    <label className="flex flex-col gap-1.5">
+      <span className="font-mono text-[11px] uppercase tracking-wider text-white/40">{label}</span>
       {children}
     </label>
   );

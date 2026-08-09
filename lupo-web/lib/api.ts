@@ -1,4 +1,12 @@
-import type { CloudService, ServiceTask, ServiceType, TemplateDto } from "./types";
+import type {
+  CloudService,
+  MonitoringSnapshot,
+  NetworkSettings,
+  PlayerInfo,
+  ServiceTask,
+  ServiceType,
+  TemplateDto,
+} from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
@@ -141,4 +149,36 @@ export function deleteBackup(token: string, serviceName: string, file: string) {
     token,
     { method: "DELETE" },
   );
+}
+
+export function getSettings(token: string) {
+  return request<NetworkSettings>("/api/settings", token);
+}
+
+export function updateSettings(token: string, settings: NetworkSettings) {
+  return request<void>("/api/settings", token, { method: "PUT", body: JSON.stringify(settings) });
+}
+
+export function deleteAllTemplates(token: string) {
+  return request<void>("/api/settings/danger/delete-all-templates", token, { method: "POST" });
+}
+
+export function resetCloud(token: string) {
+  return request<void>("/api/settings/danger/reset-cloud", token, { method: "POST" });
+}
+
+export function listPlayers(token: string) {
+  return request<PlayerInfo[]>("/api/players", token);
+}
+
+export function getMonitoring(token: string) {
+  return request<MonitoringSnapshot>("/api/monitoring", token);
+}
+
+export function getSetupStatus(token: string) {
+  return request<{ needsSetup: boolean }>("/api/setup/status", token);
+}
+
+export function completeSetup(token: string) {
+  return request<void>("/api/setup/complete", token, { method: "POST" });
 }
