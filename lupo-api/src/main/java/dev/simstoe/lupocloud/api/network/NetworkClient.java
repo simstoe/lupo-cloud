@@ -1,86 +1,79 @@
 package dev.simstoe.lupocloud.api.network;
 
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
+import dev.simstoe.lupocloud.api.network.proto.ChannelMessage;
+import dev.simstoe.lupocloud.api.network.proto.Frame;
+import dev.simstoe.lupocloud.api.network.proto.NodeServiceGrpc;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 public class NetworkClient {
-    private final EventLoopGroup group = new NioEventLoopGroup();
-    private volatile Channel channel;
-    private volatile Consumer<Packet> packetListener = packet -> {};
+    private volatile ManagedChannel channel;
+    private volatile StreamObserver<Frame> requestObserver;
+    private volatile BiConsumer<String, String> channelMessageListener = (channelName, payload) -> {};
 
     public CompletableFuture<Void> connect(String host, int port, String secret) {
         CompletableFuture<Void> connected = new CompletableFuture<>();
 
-        Bootstrap bootstrap = new Bootstrap()
-                .group(group)
-                .channel(NioSocketChannel.class)
-                .handler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    protected void initChannel(SocketChannel ch) {
-                        PacketPipeline.configure(ch.pipeline());
-                        ch.pipeline().addLast(new SimpleChannelInboundHandler<Packet>() {
-                            @Override
-                            protected void channelRead0(ChannelHandlerContext ctx, Packet packet) {
-                                if (packet.type() == PacketType.AUTH_OK) {
-                                    connected.complete(null);
-                                } else if (packet.type() == PacketType.AUTH_FAILED) {
-                                    connected.completeExceptionally(new IllegalStateException("Authentication failed."));
-                                    ctx.close();
-                                } else {
-                                    packetListener.accept(packet);
-                                }
-                            }
+        channel = ManagedChannelBuilder.forAddress(host, port)
+                .usePlaintext()
+                .intercept(new SecretHeaderInterceptor(secret))
+                .build();
 
-                            @Override
-                            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-                                connected.completeExceptionally(cause);
-                                ctx.close();
-                            }
-                        });
+        var stub = NodeServiceGrpc.newStub(channel);
+
+        requestObserver = stub.link(new StreamObserver<>() {
+            @Override
+            public void onNext(Frame frame) {
+                switch (frame.getPayloadCase()) {
+                    case ACK -> connected.complete(null);
+                    case CHANNEL_MESSAGE -> {
+                        ChannelMessage message = frame.getChannelMessage();
+                        channelMessageListener.accept(message.getChannel(), message.getPayload());
                     }
-                });
-
-        bootstrap.connect(host, port).addListener((ChannelFutureListener) future -> {
-            if (!future.isSuccess()) {
-                connected.completeExceptionally(future.cause());
-                return;
+                    default -> {}
+                }
             }
-            channel = future.channel();
-            channel.writeAndFlush(Packet.auth(secret));
+
+            @Override
+            public void onError(Throwable t) {
+                connected.completeExceptionally(t);
+            }
+
+            @Override
+            public void onCompleted() {}
         });
 
         return connected;
     }
 
-    public void onPacket(Consumer<Packet> listener) {
-        this.packetListener = listener;
-    }
-
-    public void send(Packet packet) {
-        Channel current = channel;
-        if (current != null && current.isActive()) {
-            current.writeAndFlush(packet);
-        }
+    public void onChannelMessage(BiConsumer<String, String> listener) {
+        this.channelMessageListener = listener;
     }
 
     public void sendChannelMessage(String channelName, String payload) {
-        send(Packet.channelMessage(channelName, payload));
+        StreamObserver<Frame> current = requestObserver;
+        if (current == null) return;
+        current.onNext(Frame.newBuilder()
+                .setChannelMessage(ChannelMessage.newBuilder().setChannel(channelName).setPayload(payload))
+                .build());
     }
 
     public void disconnect() {
-        Channel current = channel;
-        if (current != null) current.close();
-        group.shutdownGracefully();
+        StreamObserver<Frame> observer = requestObserver;
+        if (observer != null) observer.onCompleted();
+
+        ManagedChannel current = channel;
+        if (current == null) return;
+        current.shutdown();
+        try {
+            current.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

@@ -1,15 +1,11 @@
 package dev.simstoe.lupocloud.node.network;
 
 import dev.simstoe.lupocloud.api.logging.CloudLogger;
-import dev.simstoe.lupocloud.api.network.PacketPipeline;
 import dev.simstoe.lupocloud.node.registry.config.ServiceConfigHandler;
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+
+import java.util.concurrent.TimeUnit;
 
 public class NodeServer {
     public static final int DEFAULT_PORT = 25555;
@@ -17,36 +13,20 @@ public class NodeServer {
     private final ServiceConfigHandler configHandler;
     private final ConnectionRegistry registry = new ConnectionRegistry();
 
-    private EventLoopGroup bossGroup;
-    private EventLoopGroup workerGroup;
-    private Channel serverChannel;
+    private Server server;
 
     public NodeServer(ServiceConfigHandler configHandler) {
         this.configHandler = configHandler;
     }
 
     public void start(int port) {
-        bossGroup = new NioEventLoopGroup(1);
-        workerGroup = new NioEventLoopGroup();
-
         try {
-            ServerBootstrap bootstrap = new ServerBootstrap()
-                    .group(bossGroup, workerGroup)
-                    .channel(NioServerSocketChannel.class)
-                    .childHandler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel ch) {
-                            PacketPipeline.configure(ch.pipeline());
-                            ch.pipeline().addLast(new NodeConnectionHandler(configHandler, registry));
-                        }
-                    });
-
-            serverChannel = bootstrap.bind(port).sync().channel();
+            server = ServerBuilder.forPort(port)
+                    .addService(new NodeServiceImpl(registry))
+                    .intercept(new AuthInterceptor(configHandler))
+                    .build()
+                    .start();
             CloudLogger.success("Network server listening on port " + port + ".");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            CloudLogger.error("Could not start network server: " + e.getMessage());
-            shutdown();
         } catch (Exception e) {
             CloudLogger.error("Could not start network server on port " + port + ": " + e.getMessage());
             shutdown();
@@ -54,9 +34,16 @@ public class NodeServer {
     }
 
     public void shutdown() {
-        if (serverChannel != null) serverChannel.close();
-        if (workerGroup != null) workerGroup.shutdownGracefully();
-        if (bossGroup != null) bossGroup.shutdownGracefully();
+        if (server == null) return;
+        server.shutdown();
+        try {
+            if (!server.awaitTermination(5, TimeUnit.SECONDS)) {
+                server.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            server.shutdownNow();
+        }
     }
 
     public ConnectionRegistry registry() {

@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.simstoe.lupocloud.api.network;
+
+option java_package = "dev.simstoe.lupocloud.api.network.proto";
+option java_multiple_files = true;
+
+message ChannelMessage {
+    string channel = 1;
+    string payload = 2;
+}
+
+message Ping {}
+
+message Pong {}
+
+message Ack {}
+
+message Frame {
+    oneof payload {
+        ChannelMessage channel_message = 1;
+        Ping ping = 2;
+        Pong pong = 3;
+        Ack ack = 4;
+    }
+}
+
+service NodeService {
+    rpc Link(stream Frame) returns (stream Frame);
+}

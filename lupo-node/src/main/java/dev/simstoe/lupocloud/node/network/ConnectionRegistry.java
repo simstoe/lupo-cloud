@@ -1,31 +1,36 @@
 package dev.simstoe.lupocloud.node.network;
 
-import dev.simstoe.lupocloud.api.network.Packet;
-import io.netty.channel.Channel;
+import dev.simstoe.lupocloud.api.network.proto.Frame;
+import io.grpc.stub.StreamObserver;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ConnectionRegistry {
-    private final Set<Channel> authenticated = ConcurrentHashMap.newKeySet();
+    private final Set<StreamObserver<Frame>> connections = ConcurrentHashMap.newKeySet();
 
-    public void register(Channel channel) {
-        authenticated.add(channel);
+    public void register(StreamObserver<Frame> connection) {
+        connections.add(connection);
     }
 
-    public void unregister(Channel channel) {
-        authenticated.remove(channel);
+    public void unregister(StreamObserver<Frame> connection) {
+        connections.remove(connection);
     }
 
     public int connectionCount() {
-        return authenticated.size();
+        return connections.size();
     }
 
-    public void broadcast(Packet packet, Channel exclude) {
-        for (Channel channel : authenticated) {
-            if (channel != exclude && channel.isActive()) {
-                channel.writeAndFlush(packet);
-            }
+    public void send(StreamObserver<Frame> target, Frame frame) {
+        synchronized (target) {
+            target.onNext(frame);
+        }
+    }
+
+    public void broadcast(Frame frame, StreamObserver<Frame> exclude) {
+        for (StreamObserver<Frame> connection : connections) {
+            if (connection == exclude) continue;
+            send(connection, frame);
         }
     }
 }

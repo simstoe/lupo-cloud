@@ -8,6 +8,7 @@ import dev.simstoe.lupocloud.node.registry.CloudManagerImpl;
 import dev.simstoe.lupocloud.node.registry.config.ServiceConfigHandler;
 import dev.simstoe.lupocloud.node.registry.task.TaskManager;
 import dev.simstoe.lupocloud.node.setup.SetupWizard;
+import dev.simstoe.lupocloud.web.WebApiServer;
 
 public final class CloudBootstrap {
     static void main(String[] args) {
@@ -30,9 +31,12 @@ public final class CloudBootstrap {
         var nodeServer = new NodeServer(new ServiceConfigHandler(new TaskManager()));
         nodeServer.start(NodeServer.DEFAULT_PORT);
 
+        var webApiContext = WebApiServer.start(cloudManager, WebApiServer.DEFAULT_PORT);
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             cloudManager.stopAll();
             nodeServer.shutdown();
+            webApiContext.close();
         }, "shutdown-hook"));
 
         new SetupWizard(cloudManager).runIfNeeded();
