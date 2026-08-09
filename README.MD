@@ -66,6 +66,12 @@ Wird beim allerersten Start zufällig generiert und ins Backend-Log geschrieben 
 docker compose logs backend | grep "web admin password"
 ```
 
+Steht nach einem Neustart nicht mehr im frischen Log (weil es beim ersten Start bereits generiert und im `lupo-data`-Volume gespeichert wurde)? Direkt aus dem Volume lesen:
+
+```bash
+docker compose exec backend cat local/web-admin.secret
+```
+
 ## 6. Dashboard öffnen
 
 ```
