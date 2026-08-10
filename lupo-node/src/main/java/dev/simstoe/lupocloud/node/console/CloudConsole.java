@@ -61,6 +61,9 @@ public final class CloudConsole {
     }
 
     private void closeTerminal() {
+        // Headless (Docker without a tty) readLine() hits EOF immediately and we end up here while the
+        // web API keeps serving. Detach first so later log calls go to stdout instead of a dead terminal.
+        CloudLogger.detachTerminal();
         if (terminal != null) {
             try {
                 terminal.close();

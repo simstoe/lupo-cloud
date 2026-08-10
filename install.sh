@@ -87,4 +87,4 @@ else
     echo "  docker compose logs -f backend"
 fi
 echo
-log "Fertig. Dashboard: http://${PUBLIC_HOST:-localhost}:${DASHBOARD_PORT:-3000}/login"
+log "Fertig. Dashboard: http://${PUBLIC_HOST:-localhost}:${DASHBOARD_PORT:-3000}"

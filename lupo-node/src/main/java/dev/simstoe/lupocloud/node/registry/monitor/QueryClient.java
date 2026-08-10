@@ -12,10 +12,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
-/**
- * Minimal client for the Minecraft/GameSpy4 (UT3) query protocol used by
- * {@code enable-query=true} servers to report online player names without needing a plugin.
- */
 public class QueryClient {
     private static final byte[] MAGIC = {(byte) 0xFE, (byte) 0xFD};
     private static final int TIMEOUT_MS = 1500;

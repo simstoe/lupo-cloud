@@ -10,7 +10,6 @@ export function GlassCard({
     children: ReactNode;
     className?: string;
     style?: CSSProperties;
-    /** @deprecated no longer used — kept so existing call sites don't break */
     glow?: boolean;
 }) {
     return (
@@ -23,7 +22,6 @@ export function GlassCard({
     );
 }
 
-/** Staggered entrance delay for list items — pass the row index. */
 export function fadeStyle(i: number, stepMs = 35, maxMs = 350): CSSProperties {
     return { animationDelay: `${Math.min(i * stepMs, maxMs)}ms` };
 }

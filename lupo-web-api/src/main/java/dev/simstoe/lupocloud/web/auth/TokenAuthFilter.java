@@ -22,7 +22,7 @@ public class TokenAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String path = request.getRequestURI();
         boolean isApi = path.startsWith("/api/");
-        boolean isLogin = path.equals("/api/auth/login");
+        boolean isLogin = path.equals("/api/auth/login") || path.equals("/api/auth/bootstrap");
         boolean isPreflight = "OPTIONS".equalsIgnoreCase(request.getMethod());
 
         if (!isApi || isLogin || isPreflight) {

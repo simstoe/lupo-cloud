@@ -12,10 +12,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-/**
- * Periodically polls every running Paper service via {@link QueryClient} to build a
- * network-wide online-player snapshot, without requiring a companion plugin.
- */
 public class PlayerMonitor {
     private static final long POLL_INTERVAL_SECONDS = 5;
 

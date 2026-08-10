@@ -32,6 +32,13 @@ export type TemplateDto = {
 export type NetworkSettings = {
   networkName: string;
   motd: string;
+  maxMemoryMB: number | null;
+};
+
+export type MemoryBudget = {
+  limitMB: number | null;
+  committedMB: number;
+  hostTotalMB: number;
 };
 
 export type PlayerInfo = {

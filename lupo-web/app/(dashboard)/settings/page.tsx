@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import * as api from "@/lib/api";
-import type { NetworkSettings } from "@/lib/types";
+import type { MemoryBudget, NetworkSettings } from "@/lib/types";
 import { GlassCard } from "@/components/ui";
+import MemoryBudgetPicker, { formatMB } from "@/components/MemoryBudgetPicker";
 
 export default function SettingsPage() {
   const { token } = useAuth();
   const [networkName, setNetworkName] = useState("");
   const [motd, setMotd] = useState("");
+  const [maxMemoryMB, setMaxMemoryMB] = useState<number | null>(null);
+  const [budget, setBudget] = useState<MemoryBudget | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -18,7 +21,9 @@ export default function SettingsPage() {
     api.getSettings(token).then((settings: NetworkSettings) => {
       setNetworkName(settings.networkName);
       setMotd(settings.motd);
+      setMaxMemoryMB(settings.maxMemoryMB);
     }).catch(() => {});
+    api.getMemoryBudget(token).then(setBudget).catch(() => {});
   }, [token]);
 
   useEffect(() => {
@@ -31,7 +36,7 @@ export default function SettingsPage() {
     setBusy("__save__");
     setSaved(false);
     try {
-      await api.updateSettings(token, { networkName, motd });
+      await api.updateSettings(token, { networkName, motd, maxMemoryMB });
       setSaved(true);
     } finally {
       setBusy(null);
@@ -86,6 +91,26 @@ export default function SettingsPage() {
               />
             </label>
           </div>
+          {budget && (
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <div className="mb-3 flex items-baseline justify-between gap-3">
+                <h3 className="font-mono text-xs uppercase tracking-wider text-white/40">RAM-Budget</h3>
+                <span className="font-mono text-[11px] text-white/50">
+                  {budget.committedMB} MB von {formatMB(maxMemoryMB)} belegt
+                </span>
+              </div>
+              <p className="mb-4 font-mono text-[11px] leading-relaxed text-white/35">
+                Services, die dieses Limit überschreiten würden, werden nicht gestartet.
+              </p>
+              <MemoryBudgetPicker
+                hostTotalMB={budget.hostTotalMB}
+                value={maxMemoryMB}
+                onChange={setMaxMemoryMB}
+                disabled={busy === "__save__"}
+              />
+            </div>
+          )}
+
           <div className="mt-4 flex items-center gap-3">
             <button
               type="submit"

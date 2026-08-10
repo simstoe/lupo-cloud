@@ -1,5 +1,6 @@
 import type {
   CloudService,
+  MemoryBudget,
   MonitoringSnapshot,
   NetworkSettings,
   PlayerInfo,
@@ -45,12 +46,28 @@ async function request<T>(
   return text ? (JSON.parse(text) as T) : (undefined as T);
 }
 
-export async function login(password: string): Promise<string> {
+export async function login(username: string, password: string): Promise<string> {
   const { token } = await request<{ token: string }>("/api/auth/login", null, {
     method: "POST",
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ username, password }),
   });
   return token;
+}
+
+export async function bootstrapLogin(): Promise<string | null> {
+  try {
+    const { token } = await request<{ token: string }>("/api/auth/bootstrap", null, { method: "POST" });
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+export function createAdminAccount(token: string, username: string, password: string) {
+  return request<void>("/api/auth/create-admin", token, {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
 }
 
 export function listServices(token: string) {
@@ -159,6 +176,10 @@ export function updateSettings(token: string, settings: NetworkSettings) {
   return request<void>("/api/settings", token, { method: "PUT", body: JSON.stringify(settings) });
 }
 
+export function getMemoryBudget(token: string) {
+  return request<MemoryBudget>("/api/settings/memory", token);
+}
+
 export function deleteAllTemplates(token: string) {
   return request<void>("/api/settings/danger/delete-all-templates", token, { method: "POST" });
 }
@@ -176,7 +197,7 @@ export function getMonitoring(token: string) {
 }
 
 export function getSetupStatus(token: string) {
-  return request<{ needsSetup: boolean }>("/api/setup/status", token);
+  return request<{ needsSetup: boolean; needsAdminAccount: boolean }>("/api/setup/status", token);
 }
 
 export function completeSetup(token: string) {

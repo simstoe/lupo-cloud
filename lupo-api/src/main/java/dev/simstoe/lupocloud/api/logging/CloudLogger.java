@@ -21,6 +21,11 @@ public final class CloudLogger {
         lineReader = reader;
     }
 
+    public static void detachTerminal() {
+        lineReader = null;
+        terminal = null;
+    }
+
     public static void info(String message) {
         String formattedMsg = translateColorCodes(message);
         LOGGER.info(getTime() + " | INFO - " + stripColorCodes(message));
@@ -94,12 +99,28 @@ public final class CloudLogger {
                 .toAnsi();
     }
 
+    /** @return true if the line went out through JLine, false if the caller should fall back to stdout. */
+    private static boolean writeToTerminal(String coloredText) {
+        try {
+            if (lineReader != null) {
+                lineReader.printAbove(coloredText);
+                return true;
+            }
+            if (terminal != null) {
+                terminal.writer().println(coloredText);
+                return true;
+            }
+        } catch (RuntimeException e) {
+            // Terminal died under us (closed console, broken pipe): stop using it for good, so that a
+            // log call can never break its caller - e.g. an API request that happens to log something.
+            detachTerminal();
+        }
+        return false;
+    }
+
     private static void print(String coloredText) {
-        if (lineReader != null) {
-            lineReader.printAbove(coloredText);
-        } else if (terminal != null) {
-            terminal.writer().println(coloredText);
-        } else {
+        if (writeToTerminal(coloredText)) return;
+        if (lineReader == null && terminal == null) {
             System.out.println(coloredText.replaceAll("\u001B\\[[;\\d]*m", ""));
         }
     }

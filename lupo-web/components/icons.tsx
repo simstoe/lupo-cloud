@@ -163,8 +163,6 @@ export const IconX = (p: P) => (
     </svg>
 );
 
-/* Fenster-Buttons — Iconify "pixel"-Set, CC BY 4.0 */
-
 export const IconWinMin = (p: P) => (
     <svg viewBox="0 0 24 24" fill="currentColor" {...p}>
         <path d="M23 11v2h-1v1H2v-1H1v-2h1v-1h20v1z" />

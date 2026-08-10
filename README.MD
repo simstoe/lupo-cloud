@@ -18,20 +18,12 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Am Ende zeigt die Konsole automatisch, wie man sich im Dashboard einloggt (URL und beim allerersten Start das generierte Admin-Passwort).
+Am Ende zeigt die Konsole die Dashboard-URL. Dashboard öffnen — beim allerersten Start gibt es noch kein Passwort einzugeben: man wird automatisch angemeldet und legt direkt in der Ersteinrichtung (`/setup`) den eigenen Admin-Benutzernamen und das Passwort fest. Ab dann meldet man sich damit ganz normal über `/login` an.
 
 Für Updates einfach erneut ausführen (bereits vorhandenes `.env` und Repo werden übernommen bzw. aktualisiert):
 
 ```bash
 ./install.sh
-```
-
-## Admin-Passwort später nachschlagen
-
-Steht nicht mehr in der Konsole (z. B. nach einem Neustart, weil es nur beim allerersten Start ausgegeben wird)? Direkt aus dem Volume lesen:
-
-```bash
-docker compose exec backend cat local/web-admin.secret
 ```
 
 ## Nicht Teil dieser Anleitung
@@ -88,7 +80,7 @@ DASHBOARD_PORT=3000
 docker compose up -d --build
 ```
 
-Das baut beide Images (Backend-JAR via Gradle, Dashboard via `next build`) und startet sie. Persistente Daten (Tasks, Templates, Server-/Proxy-Instanzen, das Admin-Passwort) liegen in einem benannten Docker-Volume (`lupo-data`) und überleben Neustarts/Updates.
+Das baut beide Images (Backend-JAR via Gradle, Dashboard via `next build`) und startet sie. Persistente Daten (Tasks, Templates, Server-/Proxy-Instanzen, der Admin-Account) liegen in einem benannten Docker-Volume (`lupo-data`) und überleben Neustarts/Updates.
 
 Status prüfen:
 
@@ -96,21 +88,13 @@ Status prüfen:
 docker compose ps
 ```
 
-### 5. Login-Infos holen
-
-Beim allerersten Start zeigt die Konsole automatisch Dashboard-URL und Admin-Passwort an:
-
-```bash
-docker compose logs backend | grep -A4 "LUPO CLOUD READY"
-```
-
-### 6. Dashboard öffnen
+### 5. Dashboard öffnen
 
 ```
-http://<PUBLIC_HOST>:<DASHBOARD_PORT>/login
+http://<PUBLIC_HOST>:<DASHBOARD_PORT>
 ```
 
-Mit dem Passwort aus Schritt 5 einloggen. Da die Cloud noch leer ist, leitet das Dashboard automatisch zur Ersteinrichtung (`/setup`) weiter — dort Proxy und Lobby anlegen (oder überspringen und später manuell über Tasks anlegen).
+Solange noch kein Admin-Account existiert, meldet das Dashboard beim Öffnen automatisch an und leitet direkt zur Ersteinrichtung (`/setup`) weiter. Dort zuerst Benutzername und Passwort für den Admin-Account festlegen (das ist ab jetzt der Login für `/login`), danach optional Proxy und Lobby anlegen (oder überspringen und später manuell über Tasks anlegen).
 
 ### Updates
 

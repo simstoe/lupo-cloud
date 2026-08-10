@@ -16,7 +16,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-/** Periodically samples CPU/RAM/uptime for every running instance plus host-level resource usage. */
 public class MetricsCollector {
     private static final long POLL_INTERVAL_SECONDS = 5;
 

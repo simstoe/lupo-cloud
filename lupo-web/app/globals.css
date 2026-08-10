@@ -17,7 +17,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Form controls don't inherit the document font on their own. */
 input,
 select,
 textarea,

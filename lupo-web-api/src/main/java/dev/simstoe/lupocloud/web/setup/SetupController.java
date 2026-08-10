@@ -1,6 +1,7 @@
 package dev.simstoe.lupocloud.web.setup;
 
 import dev.simstoe.lupocloud.api.manager.ICloudManager;
+import dev.simstoe.lupocloud.web.auth.AdminAccountService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,14 +20,16 @@ public class SetupController {
     private static final File MARKER_FILE = new File("local", ".setup-done");
 
     private final ICloudManager cloudManager;
+    private final AdminAccountService adminAccount;
 
-    public SetupController(ICloudManager cloudManager) {
+    public SetupController(ICloudManager cloudManager, AdminAccountService adminAccount) {
         this.cloudManager = cloudManager;
+        this.adminAccount = adminAccount;
     }
 
     @GetMapping("/status")
     public SetupStatus status() {
-        return new SetupStatus(needsSetup());
+        return new SetupStatus(needsSetup(), !adminAccount.exists());
     }
 
     @PostMapping("/complete")
@@ -57,5 +60,5 @@ public class SetupController {
         }
     }
 
-    public record SetupStatus(boolean needsSetup) {}
+    public record SetupStatus(boolean needsSetup, boolean needsAdminAccount) {}
 }

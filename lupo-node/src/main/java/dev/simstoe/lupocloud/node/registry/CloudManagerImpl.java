@@ -3,6 +3,7 @@ package dev.simstoe.lupocloud.node.registry;
 import dev.simstoe.lupocloud.api.logging.CloudLogger;
 import dev.simstoe.lupocloud.api.manager.ICloudManager;
 import dev.simstoe.lupocloud.api.models.CloudService;
+import dev.simstoe.lupocloud.api.models.MemoryBudget;
 import dev.simstoe.lupocloud.api.models.MonitoringSnapshot;
 import dev.simstoe.lupocloud.api.models.NetworkSettings;
 import dev.simstoe.lupocloud.api.models.PlayerInfo;
@@ -19,6 +20,7 @@ import dev.simstoe.lupocloud.node.registry.template.TemplateManager;
 import dev.simstoe.lupocloud.node.registry.util.DirectoryUtil;
 
 import java.io.*;
+import java.lang.management.ManagementFactory;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -55,6 +57,8 @@ public class CloudManagerImpl implements ICloudManager {
 
     private final boolean tasksetAvailable = isTasksetAvailable();
 
+    private final Object memoryBudgetLock = new Object();
+
     private record LaunchSpec(String name, int port, String templateName, int minMemoryMB, int maxMemoryMB,
                                Integer cpuCoreLimit, String taskName, File serviceDir, boolean ephemeral) {}
 
@@ -65,15 +69,18 @@ public class CloudManagerImpl implements ICloudManager {
         final Runnable restartAction;
         final File serviceDir;
         final boolean ephemeral;
+        final int maxMemoryMB;
         final Instant startedAt = Instant.now();
         volatile boolean intentionalStop = false;
 
-        ManagedInstance(CloudService info, Process process, Runnable restartAction, File serviceDir, boolean ephemeral) {
+        ManagedInstance(CloudService info, Process process, Runnable restartAction, File serviceDir, boolean ephemeral,
+                        int maxMemoryMB) {
             this.info = info;
             this.process = process;
             this.restartAction = restartAction;
             this.serviceDir = serviceDir;
             this.ephemeral = ephemeral;
+            this.maxMemoryMB = maxMemoryMB;
         }
     }
 
@@ -119,6 +126,30 @@ public class CloudManagerImpl implements ICloudManager {
         command.add(jarFileName);
         command.addAll(Arrays.asList(extraArgs));
         return command;
+    }
+
+    private int committedMemoryMB() {
+        return instances.values().stream().mapToInt(instance -> instance.maxMemoryMB).sum();
+    }
+
+    private boolean fitsInMemoryBudget(String name, int maxMemoryMB) {
+        Integer limit = settingsManager.get().maxMemoryMB();
+        if (limit == null || limit <= 0) return true;
+
+        int committed = committedMemoryMB();
+        if (committed + maxMemoryMB <= limit) return true;
+
+        CloudLogger.error("Not enough RAM budget to start '" + name + "': needs " + maxMemoryMB + " MB, but "
+                + committed + " of " + limit + " MB are already committed. Raise the limit in the settings"
+                + " or stop another service.");
+        return false;
+    }
+
+    @Override
+    public MemoryBudget memoryBudget() {
+        var osBean = ManagementFactory.getPlatformMXBean(com.sun.management.OperatingSystemMXBean.class);
+        return new MemoryBudget(settingsManager.get().maxMemoryMB(), committedMemoryMB(),
+                osBean.getTotalMemorySize() / (1024 * 1024));
     }
 
     @Override
@@ -211,6 +242,8 @@ public class CloudManagerImpl implements ICloudManager {
             CloudLogger.error("Server '" + spec.name() + "' is already running!");
             return;
         }
+        // Checked again under the lock below - this is just to fail before downloading a jar.
+        if (!fitsInMemoryBudget(spec.name(), spec.maxMemoryMB())) return;
 
         File serviceDir = spec.serviceDir();
         boolean isNew = !serviceDir.exists();
@@ -245,9 +278,13 @@ public class CloudManagerImpl implements ICloudManager {
             builder.directory(serviceDir);
             builder.redirectErrorStream(true);
 
-            Process process = builder.start();
-            Runnable restartAction = () -> startServerInternal(spec, false);
-            registerProcess(key, spec.name(), ServiceType.PAPER, spec.port(), process, restartAction, serviceDir, spec.ephemeral());
+            synchronized (memoryBudgetLock) {
+                if (!fitsInMemoryBudget(spec.name(), spec.maxMemoryMB())) return;
+                Process process = builder.start();
+                Runnable restartAction = () -> startServerInternal(spec, false);
+                registerProcess(key, spec.name(), ServiceType.PAPER, spec.port(), process, restartAction, serviceDir,
+                        spec.ephemeral(), spec.maxMemoryMB());
+            }
             CloudLogger.success("Server '" + spec.name() + "' started successfully!");
 
         } catch (Exception e) {
@@ -268,6 +305,8 @@ public class CloudManagerImpl implements ICloudManager {
             CloudLogger.error("Proxy '" + spec.name() + "' is already running!");
             return;
         }
+        // Checked again under the lock below - this is just to fail before downloading a jar.
+        if (!fitsInMemoryBudget(spec.name(), spec.maxMemoryMB())) return;
 
         File serviceDir = spec.serviceDir();
         boolean isNew = !serviceDir.exists();
@@ -302,9 +341,13 @@ public class CloudManagerImpl implements ICloudManager {
             builder.directory(serviceDir);
             builder.redirectErrorStream(true);
 
-            Process process = builder.start();
-            Runnable restartAction = () -> startProxyInternal(spec, false);
-            registerProcess(key, spec.name(), ServiceType.VELOCITY, spec.port(), process, restartAction, serviceDir, spec.ephemeral());
+            synchronized (memoryBudgetLock) {
+                if (!fitsInMemoryBudget(spec.name(), spec.maxMemoryMB())) return;
+                Process process = builder.start();
+                Runnable restartAction = () -> startProxyInternal(spec, false);
+                registerProcess(key, spec.name(), ServiceType.VELOCITY, spec.port(), process, restartAction, serviceDir,
+                        spec.ephemeral(), spec.maxMemoryMB());
+            }
             CloudLogger.success("Velocity proxy '" + spec.name() + "' started successfully!");
 
         } catch (Exception e) {
@@ -365,8 +408,8 @@ public class CloudManagerImpl implements ICloudManager {
         }
     }
 
-    private void registerProcess(String key, String name, ServiceType type, int port, Process process, Runnable restartAction, File serviceDir, boolean ephemeral) {
-        var instance = new ManagedInstance(CloudService.create(name, type, port).running(true), process, restartAction, serviceDir, ephemeral);
+    private void registerProcess(String key, String name, ServiceType type, int port, Process process, Runnable restartAction, File serviceDir, boolean ephemeral, int maxMemoryMB) {
+        var instance = new ManagedInstance(CloudService.create(name, type, port).running(true), process, restartAction, serviceDir, ephemeral, maxMemoryMB);
         instances.put(key, instance);
 
         Thread logReaderThread = new Thread(() -> {

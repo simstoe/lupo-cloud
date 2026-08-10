@@ -1,6 +1,7 @@
 package dev.simstoe.lupocloud.api.manager;
 
 import dev.simstoe.lupocloud.api.models.CloudService;
+import dev.simstoe.lupocloud.api.models.MemoryBudget;
 import dev.simstoe.lupocloud.api.models.MonitoringSnapshot;
 import dev.simstoe.lupocloud.api.models.NetworkSettings;
 import dev.simstoe.lupocloud.api.models.PlayerInfo;
@@ -51,6 +52,7 @@ public interface ICloudManager {
 
     NetworkSettings settings();
     void updateSettings(NetworkSettings settings);
+    MemoryBudget memoryBudget();
     void deleteAllTemplates();
     void resetCloud();
 

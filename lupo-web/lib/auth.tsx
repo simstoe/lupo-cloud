@@ -2,14 +2,14 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { login as apiLogin } from "./api";
+import { login as apiLogin, bootstrapLogin } from "./api";
 
 const STORAGE_KEY = "lupo_token";
 
 type AuthContextValue = {
   token: string | null;
   ready: boolean;
-  login: (password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -20,12 +20,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setToken(localStorage.getItem(STORAGE_KEY));
-    setReady(true);
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      setToken(stored);
+      setReady(true);
+      return;
+    }
+
+    // No stored session: while no admin account exists yet, the backend hands out a token to
+    // anyone reaching the dashboard so the very first visitor lands straight in /setup.
+    bootstrapLogin().then((bootstrapToken) => {
+      if (bootstrapToken) {
+        localStorage.setItem(STORAGE_KEY, bootstrapToken);
+        setToken(bootstrapToken);
+      }
+      setReady(true);
+    });
   }, []);
 
-  async function login(password: string) {
-    const newToken = await apiLogin(password);
+  async function login(username: string, password: string) {
+    const newToken = await apiLogin(username, password);
     localStorage.setItem(STORAGE_KEY, newToken);
     setToken(newToken);
   }

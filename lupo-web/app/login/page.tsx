@@ -9,6 +9,7 @@ import { LiveDot } from "@/components/ui";
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,10 +19,10 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await login(password);
+      await login(username, password);
       router.replace("/");
     } catch {
-      setError("Ungültiges Passwort.");
+      setError("Ungültiger Benutzername oder Passwort.");
     } finally {
       setLoading(false);
     }
@@ -49,13 +50,26 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[11px] uppercase tracking-wider text-white/40">Benutzername</span>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              type="text"
+              autoFocus
+              disabled={loading}
+              autoComplete="username"
+              className="border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40 disabled:opacity-50"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
             <span className="font-mono text-[11px] uppercase tracking-wider text-white/40">Passwort</span>
             <input
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type="password"
-              autoFocus
               disabled={loading}
+              autoComplete="current-password"
               placeholder="••••••••"
               className="border border-white/15 bg-white/[0.02] px-3 py-2 text-sm text-white outline-none transition-colors focus:border-white/40 disabled:opacity-50"
             />

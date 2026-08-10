@@ -9,7 +9,7 @@ import dev.simstoe.lupocloud.node.registry.config.ServiceConfigHandler;
 import dev.simstoe.lupocloud.node.registry.config.SettingsManager;
 import dev.simstoe.lupocloud.node.registry.task.TaskManager;
 import dev.simstoe.lupocloud.web.WebApiServer;
-import dev.simstoe.lupocloud.web.auth.WebAdminSecret;
+import dev.simstoe.lupocloud.web.auth.AdminAccountService;
 import org.springframework.context.ConfigurableApplicationContext;
 
 public final class CloudBootstrap {
@@ -58,17 +58,17 @@ public final class CloudBootstrap {
     }
 
     private static void printLoginInfo(ConfigurableApplicationContext webApiContext) {
-        var adminSecret = webApiContext.getBean(WebAdminSecret.class);
+        var adminAccount = webApiContext.getBean(AdminAccountService.class);
         var dashboardOrigin = webApiContext.getEnvironment()
                 .getProperty("LUPO_DASHBOARD_ORIGIN", "http://localhost:3000");
-        var loginUrl = dashboardOrigin + "/login";
 
         CloudLogger.plain("&a=== LUPO CLOUD READY ===&r");
-        CloudLogger.plain("Dashboard: &b" + loginUrl + "&r");
-        if (adminSecret.wasGenerated()) {
-            CloudLogger.plain("Passwort:  &e" + adminSecret.secret() + "&r");
+        CloudLogger.plain("Dashboard: &b" + dashboardOrigin + "&r");
+        if (adminAccount.exists()) {
+            CloudLogger.plain("Mit deinem Admin-Account einloggen unter &b" + dashboardOrigin + "/login&r");
         } else {
-            CloudLogger.plain("Passwort:  bereits gesetzt (lokal gespeichert, lupo-data/local/web-admin.secret)");
+            CloudLogger.plain("Noch kein Admin-Account eingerichtet — Dashboard oeffnen, du wirst automatisch");
+            CloudLogger.plain("eingeloggt und richtest dort im Setup deinen Admin-Account ein.");
         }
         CloudLogger.plain("&a========================&r\n");
     }

@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Optional;
 
-/** Samples CPU/RAM usage of a child process via {@code ps}, since a JVM cannot read another process's RSS directly. */
 public class ProcessMetrics {
     public record ProcessStats(double cpuPercent, long memoryMB) {}
 
