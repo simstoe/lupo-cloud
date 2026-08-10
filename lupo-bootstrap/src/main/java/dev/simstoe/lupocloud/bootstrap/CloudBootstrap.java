@@ -9,6 +9,8 @@ import dev.simstoe.lupocloud.node.registry.config.ServiceConfigHandler;
 import dev.simstoe.lupocloud.node.registry.config.SettingsManager;
 import dev.simstoe.lupocloud.node.registry.task.TaskManager;
 import dev.simstoe.lupocloud.web.WebApiServer;
+import dev.simstoe.lupocloud.web.auth.WebAdminSecret;
+import org.springframework.context.ConfigurableApplicationContext;
 
 public final class CloudBootstrap {
     static void main(String[] args) {
@@ -30,6 +32,7 @@ public final class CloudBootstrap {
         nodeServer.start(NodeServer.DEFAULT_PORT);
 
         var webApiContext = WebApiServer.start(cloudManager, WebApiServer.DEFAULT_PORT);
+        printLoginInfo(webApiContext);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             cloudManager.stopAll();
@@ -52,5 +55,21 @@ public final class CloudBootstrap {
 
         CloudLogger.plain("CloudSystem - Version: &b2026-08-02.1&r");
         CloudLogger.plain("Author: &bSimon Stögerer &r(&bsimstoe &r- &bhttps://simstoe.dev&r)\n");
+    }
+
+    private static void printLoginInfo(ConfigurableApplicationContext webApiContext) {
+        var adminSecret = webApiContext.getBean(WebAdminSecret.class);
+        var dashboardOrigin = webApiContext.getEnvironment()
+                .getProperty("LUPO_DASHBOARD_ORIGIN", "http://localhost:3000");
+        var loginUrl = dashboardOrigin + "/login";
+
+        CloudLogger.plain("&a=== LUPO CLOUD READY ===&r");
+        CloudLogger.plain("Dashboard: &b" + loginUrl + "&r");
+        if (adminSecret.wasGenerated()) {
+            CloudLogger.plain("Passwort:  &e" + adminSecret.secret() + "&r");
+        } else {
+            CloudLogger.plain("Passwort:  bereits gesetzt (lokal gespeichert, lupo-data/local/web-admin.secret)");
+        }
+        CloudLogger.plain("&a========================&r\n");
     }
 }

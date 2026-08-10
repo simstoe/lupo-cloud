@@ -6,9 +6,47 @@ Backend (Java) und Dashboard (Next.js) laufen als zwei Docker-Container. Der Ser
 
 - Ein leerer Root-Server (Linux, x86_64 oder arm64)
 - Öffentlich erreichbare IP oder Domain (z. B. `cloud.example.com` oder `203.0.113.10`)
-- Ports 8080 (Backend) und 3000 (Dashboard) offen — oder eigene Ports wählen (siehe unten)
+- Ports 8080 (Backend) und 3000 (Dashboard) offen — oder eigene Ports wählen (Installer fragt danach)
 
-## 1. Docker installieren
+## Installation
+
+Auf dem Server wird nur eine einzige Datei gebraucht — `install.sh`. Sie installiert Docker (falls nötig), holt das Repo, fragt interaktiv nach `PUBLIC_HOST` und den Ports, baut die Images und startet den Stack:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/simstoe/lupo-cloud/master/install.sh -o install.sh
+chmod +x install.sh
+./install.sh
+```
+
+Am Ende zeigt die Konsole automatisch, wie man sich im Dashboard einloggt (URL und beim allerersten Start das generierte Admin-Passwort).
+
+Für Updates einfach erneut ausführen (bereits vorhandenes `.env` und Repo werden übernommen bzw. aktualisiert):
+
+```bash
+./install.sh
+```
+
+## Admin-Passwort später nachschlagen
+
+Steht nicht mehr in der Konsole (z. B. nach einem Neustart, weil es nur beim allerersten Start ausgegeben wird)? Direkt aus dem Volume lesen:
+
+```bash
+docker compose exec backend cat local/web-admin.secret
+```
+
+## Nicht Teil dieser Anleitung
+
+- TLS/Reverse-Proxy (z. B. nginx, Caddy, Traefik) — für eine öffentlich erreichbare Domain mit HTTPS separat einrichten
+- Firewall-Konfiguration
+- Multi-Server-/Cluster-Setups — diese Anleitung deckt einen einzelnen Root-Server ab
+
+---
+
+## Manuelle Installation (Referenz)
+
+Für den Fall, dass `install.sh` nicht genutzt werden soll — das sind die einzelnen Schritte, die der Installer automatisiert.
+
+### 1. Docker installieren
 
 ```bash
 curl -fsSL https://get.docker.com | sh
@@ -21,14 +59,14 @@ docker --version
 docker compose version
 ```
 
-## 2. Repo clonen
+### 2. Repo clonen
 
 ```bash
 git clone https://github.com/simstoe/lupo-cloud.git
 cd lupo-cloud
 ```
 
-## 3. `.env` konfigurieren
+### 3. `.env` konfigurieren
 
 ```bash
 cp .env.example .env
@@ -44,7 +82,7 @@ DASHBOARD_PORT=3000
 
 `PUBLIC_HOST` wird beim Bauen fest ins Dashboard einkompiliert (Next.js-Vorgabe). Wenn sich die Adresse später ändert, muss das Dashboard neu gebaut werden (Schritt 4 erneut ausführen).
 
-## 4. Bauen und starten
+### 4. Bauen und starten
 
 ```bash
 docker compose up -d --build
@@ -58,21 +96,15 @@ Status prüfen:
 docker compose ps
 ```
 
-## 5. Admin-Passwort holen
+### 5. Login-Infos holen
 
-Wird beim allerersten Start zufällig generiert und ins Backend-Log geschrieben (nie in eine Datei, die man versehentlich committen könnte):
-
-```bash
-docker compose logs backend | grep "web admin password"
-```
-
-Steht nach einem Neustart nicht mehr im frischen Log (weil es beim ersten Start bereits generiert und im `lupo-data`-Volume gespeichert wurde)? Direkt aus dem Volume lesen:
+Beim allerersten Start zeigt die Konsole automatisch Dashboard-URL und Admin-Passwort an:
 
 ```bash
-docker compose exec backend cat local/web-admin.secret
+docker compose logs backend | grep -A4 "LUPO CLOUD READY"
 ```
 
-## 6. Dashboard öffnen
+### 6. Dashboard öffnen
 
 ```
 http://<PUBLIC_HOST>:<DASHBOARD_PORT>/login
@@ -80,15 +112,9 @@ http://<PUBLIC_HOST>:<DASHBOARD_PORT>/login
 
 Mit dem Passwort aus Schritt 5 einloggen. Da die Cloud noch leer ist, leitet das Dashboard automatisch zur Ersteinrichtung (`/setup`) weiter — dort Proxy und Lobby anlegen (oder überspringen und später manuell über Tasks anlegen).
 
-## Updates
+### Updates
 
 ```bash
 git pull
 docker compose up -d --build
 ```
-
-## Nicht Teil dieser Anleitung
-
-- TLS/Reverse-Proxy (z. B. nginx, Caddy, Traefik) — für eine öffentlich erreichbare Domain mit HTTPS separat einrichten
-- Firewall-Konfiguration
-- Multi-Server-/Cluster-Setups — diese Anleitung deckt einen einzelnen Root-Server ab

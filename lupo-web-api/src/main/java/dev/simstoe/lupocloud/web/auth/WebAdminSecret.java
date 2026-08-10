@@ -1,6 +1,5 @@
 package dev.simstoe.lupocloud.web.auth;
 
-import dev.simstoe.lupocloud.api.logging.CloudLogger;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -13,10 +12,13 @@ public class WebAdminSecret {
     private static final File SECRET_FILE = new File("local", "web-admin.secret");
 
     private final String secret;
+    private final boolean generated;
 
     public WebAdminSecret() {
         try {
+            boolean existed = SECRET_FILE.isFile() && !Files.readString(SECRET_FILE.toPath()).isBlank();
             this.secret = loadOrGenerate();
+            this.generated = !existed;
         } catch (IOException e) {
             throw new IllegalStateException("Could not read/generate the web admin secret.", e);
         }
@@ -33,11 +35,20 @@ public class WebAdminSecret {
 
         String generated = UUID.randomUUID().toString().replace("-", "");
         Files.writeString(SECRET_FILE.toPath(), generated);
-        CloudLogger.success("Generated web admin password: " + generated + " (saved to " + SECRET_FILE.getPath() + ")");
         return generated;
     }
 
     public boolean matches(String candidate) {
         return secret.equals(candidate);
+    }
+
+    /** The plaintext admin password. Only meant to be shown to the operator right after {@link #wasGenerated()}. */
+    public String secret() {
+        return secret;
+    }
+
+    /** True if this password was freshly generated on this startup (i.e. the very first start). */
+    public boolean wasGenerated() {
+        return generated;
     }
 }

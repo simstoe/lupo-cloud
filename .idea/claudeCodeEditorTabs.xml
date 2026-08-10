@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ClaudeCodeEditorTabs">
-    <option name="activeSessionId" value="c5c4c683-683c-4302-bc56-59cc6cc278eb" />
+    <option name="activeSessionId" value="a8f77b19-8b7f-43b1-9218-50bc611545d2" />
     <option name="openSessionIds">
       <list>
-        <option value="c5c4c683-683c-4302-bc56-59cc6cc278eb" />
+        <option value="a8f77b19-8b7f-43b1-9218-50bc611545d2" />
       </list>
     </option>
     <option name="sessionPaths">
       <map>
-        <entry key="c5c4c683-683c-4302-bc56-59cc6cc278eb" value="/sessions/99c13442-7dba-4d26-879e-ebd9d9389c49" />
+        <entry key="a8f77b19-8b7f-43b1-9218-50bc611545d2" value="/sessions/3c0d5b0e-a81c-4330-bc9f-70afe67004e3" />
       </map>
     </option>
     <option name="sessionTitles">
       <map>
-        <entry key="c5c4c683-683c-4302-bc56-59cc6cc278eb" value="folgendes: das frontend also das dashboard soll da" />
+        <entry key="a8f77b19-8b7f-43b1-9218-50bc611545d2" value="also mache mir folgendes: man soll auf den server" />
       </map>
     </option>
   </component>
