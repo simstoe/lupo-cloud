@@ -60,7 +60,7 @@ public final class CloudBootstrap {
     private static void printLoginInfo(ConfigurableApplicationContext webApiContext) {
         var adminAccount = webApiContext.getBean(AdminAccountService.class);
         var dashboardOrigin = webApiContext.getEnvironment()
-                .getProperty("LUPO_DASHBOARD_ORIGIN", "http://localhost:3000");
+                .getProperty("LUPO_DASHBOARD_ORIGIN", "http://localhost:3000/setup");
 
         CloudLogger.plain("&a=== LUPO CLOUD READY ===&r");
         CloudLogger.plain("Dashboard: &b" + dashboardOrigin + "&r");
