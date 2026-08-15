@@ -1,7 +1,5 @@
 # Overview
 
-# Lupo Cloud — Installation auf einem Root-Server
-
 Backend (Java) und Dashboard (Next.js) laufen als zwei Docker-Container. Der Server braucht dafür **ausschließlich Docker** — kein Java, kein Node.js direkt installiert.
 
 ## Voraussetzungen
